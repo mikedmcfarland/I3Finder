@@ -1,0 +1,7 @@
+.ensime
+.ensime_lucene/
+.history
+project/project
+project/target
+target
+project
