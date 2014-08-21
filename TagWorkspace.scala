@@ -2,6 +2,7 @@ import scala.sys.process._
 import play.api.libs.json._
 import play.api.libs.functional._
 
+
 object TagWorkspace{
 
 	def main(arg: Array[String]) = {
@@ -37,9 +38,11 @@ object TagWorkspace{
 		val names = selections.map(_.displayName)
 		val namesArg = names.mkString("\n");
 
-		//Admittedly lame way of piping theses names to dmenu on standard in
-		val echo = Seq("echo",namesArg)
-		val dmenuResult = (echo #| "dmenu" !!).trim
+		import java.io._
+		import java.nio.charset.StandardCharsets
+
+		val input = new ByteArrayInputStream(namesArg.getBytes(StandardCharsets.UTF_8))
+		val dmenuResult = ( ("dmenu" #< input) !! ).trim
 
 		val selection = selections.find(_.displayName == dmenuResult)
 		
