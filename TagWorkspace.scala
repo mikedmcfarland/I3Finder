@@ -1,21 +1,17 @@
-// import com.github.pathikrit.dijon._
 import scala.sys.process._
 import play.api.libs.json._
 import play.api.libs.functional._
 
 object TagWorkspace{
 
-	val getWorkspacesCmd = Seq("i3-msg","-t","get_workspaces")
-	val get_tree = Seq("i3-msg", "-t", "get_tree")
-	val get_marks = Seq("i3-msg", "-t", "get_marks")
-
 	def main(arg: Array[String]) = {
 		implicit val fmt = Json.format[Node]
-		
+
+		val get_tree = Seq("i3-msg", "-t", "get_tree")
 	    val treeAsJson = Json.parse(get_tree!!)
 
-	    val nodes = Json.fromJson[Node](treeAsJson)
-	    val nodeSeq = nodes.map(getNodes) 
+	    val root = Json.fromJson[Node](treeAsJson)
+	    val nodeSeq = root.map(nodeAndChildren) 
 
 	    val selections = 
 	    	for(node <- nodeSeq.get if !node.name.contains("scratch");
@@ -23,56 +19,57 @@ object TagWorkspace{
 	    	yield  selection 
 
 	    showSelections(selections)
+
+	}
+
+	def nodeAndChildren(node: Node):Seq[Node] = Seq(node) ++ node.nodes.flatMap(nodeAndChildren) 
+
+	def toSelections(node: Node) = {
+		node match {
+			case Node(name,"con",id,_,None,Some(_)) => Some(new WindowSelection(id,name))
+			case Node(name,"con",id,_,Some(mark),_) => Some(new MarkSelection(id,name,mark))
+			case Node(name,"workspace",id,_,None,_) => Some(new WorkspaceSelection(id,name))
+			case _ => None
+		}	
 	}
 
 	def showSelections(selections:Seq[Selection]){
 		val names = selections.map(_.displayName)
 		val namesArg = names.mkString("\n");
+
+		//Admittedly lame way of piping theses names to dmenu on standard in
 		val echo = Seq("echo",namesArg)
-		val dmenuResult = echo #| "dmenu" !
+		val dmenuResult = (echo #| "dmenu" !!).trim
 
 		val selection = selections.find(_.displayName == dmenuResult)
+		
 		selection.map(_.focus)
 	}
-
-	def getNodes(node: Node):Seq[Node] = {
-		Seq(node) ++ node.nodes.flatMap(getNodes)
-	}
-
-	def toSelections(node: Node) = {
-		node match {
-			case Node(name,"con",_,None,Some(_)) => Some(new WindowSelection(name))
-			case Node(name,"con",_,Some(mark),_) => Some(new MarkSelection(name,mark))
-			case Node(name,"workspace",_,None,_) => Some(new WorkspaceSelection(name))
-			case _ => None
-		}	
-	}
 }
+
+case class Node(name:String, `type`:String, id:Int, nodes:Seq[Node], mark:Option[String],window:Option[Int])
 
 trait Selection{
+	def id:Int
 	def displayName : String
-	def focus() : Unit
-}
-class MarkSelection(name:String,mark:String) extends Selection{
-	lazy val cmd = Seq("i3-msg","[con_mark=$name]","focus")
-	def displayName =mark + ": " + name
-	def focus() = cmd!!
-
+	def focus() : Unit = {
+		val cmd = Seq("i3-msg",s"[con_id=$id]","focus")
+		cmd!!
+	}
 }
 
-class WindowSelection(name:String) extends Selection{
-	lazy val cmd = Seq("i3-msg","[con=$name]","focus")
-	def displayName = name
-	def focus() = cmd!!
+class MarkSelection(val id:Int,name:String,mark:String) extends Selection{
+	def displayName = mark + ": " + name
+	override def focus() ={
+		val cmd = Seq("i3-msg",s"[con_mark=$mark]","focus")
+		cmd!!
+	} 
+
 }
 
-class WorkspaceSelection(name:String) extends Selection{
+class WindowSelection(val id:Int,val displayName:String) extends Selection
 
-	lazy val cmd = Seq("i3-msg","workspace $name","focus")
+class WorkspaceSelection(val id:Int,val name:String) extends Selection{
 	def displayName = "workspace: " + name
-	def focus() = cmd!! 
 }
-
-case class Node(name:String, `type`:String, nodes:Seq[Node], mark:Option[String],window:Option[Int])
-
 
