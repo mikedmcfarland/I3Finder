@@ -100,10 +100,6 @@ trait Selection {
 
 class MarkSelection(val id: Int, name: String, mark: String) extends Selection {
   def displayName = mark + ": " + name
-  override def focus() = {
-    val cmd = Seq("i3-msg", s"[con_mark=$mark]", "focus")
-    cmd!!
-  }
 }
 
 class WindowSelection(val id: Int, val displayName: String) extends Selection
