@@ -1,12 +1,20 @@
-name := "i3 tag workspace"
+import com.github.retronym.SbtOneJar._
 
-version := "1.0"
+oneJarSettings
+
+packAutoSettings
+
+name := "I3Finder"
+
+version := ".9"
 
 scalaVersion := "2.10.4"
 
+mainClass := Some("I3Finder")
+
 resolvers += "Sonatype releases" at "http://oss.sonatype.org/content/repositories/releases/"
 
-libraryDependencies += "com.github.pathikrit" %% "dijon" % "0.2.4"
+libraryDependencies += "com.github.scopt" %% "scopt" % "3.2.0"
 
 resolvers += "Typesafe Repo" at "http://repo.typesafe.com/typesafe/releases/"
 
